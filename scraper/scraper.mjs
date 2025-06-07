@@ -2,14 +2,15 @@ import { scraper } from "google-maps-review-scraper"
 import fs from "fs";
 import XLSX from 'xlsx';
 
-const maxReviewsPerPlace = 5000;
+const maxReviewsPerPlace = 2000;
 const xlsxFileName = 'places_list.xlsx';
 
+// load the excel
 const workbook = XLSX.readFile(xlsxFileName);
 const sheetName = workbook.SheetNames[0];
 const worksheet = workbook.Sheets[sheetName];
 
-const data = XLSX.utils.sheet_to_json(worksheet, {});  // Array of rows
+const data = XLSX.utils.sheet_to_json(worksheet, {});
 
 for (const row of data) {
   const place = row.Place;
@@ -28,12 +29,12 @@ for (const row of data) {
 
   console.log(`Scraping reviews for: ${place}`);
 
+  // scrape the place
   try {
-    const result = await scraper(url, { clean: true, pages: maxReviewsPerPlace/10 }); // 10 reviews per page
+    const result = await scraper(url, { clean: true, languageFilter: "en", maxReviewCount: maxReviewsPerPlace }); // 10 reviews per page
     const reviews = JSON.parse(result);
 
     const englishReviews = reviews
-      .filter(r => r.review && r.review.language === "en")
       .map(r => ({
         place: place,
         rating: r.review.rating,
@@ -50,7 +51,7 @@ for (const row of data) {
     // Mark this place as scraped
     row.Scraped = englishReviews.length;
 
-    // Save workbook immediately after each place:
+    // Save review count in the excel
     XLSX.utils.sheet_add_json(worksheet, data, { origin: "A1", skipHeader: false });
     XLSX.writeFile(workbook, xlsxFileName);
 
