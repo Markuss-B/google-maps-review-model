@@ -3,10 +3,11 @@ import fs from "fs";
 import XLSX from 'xlsx';
 
 const maxReviewsPerPlace = 2000;
-const xlsxFileName = 'places_list.xlsx';
+const xlsxFilePath = '../data/places_list.xlsx';
+const reviewsFilePath = '../data/reviews.jsonl';
 
 // load the excel
-const workbook = XLSX.readFile(xlsxFileName);
+const workbook = XLSX.readFile(xlsxFilePath);
 const sheetName = workbook.SheetNames[0];
 const worksheet = workbook.Sheets[sheetName];
 
@@ -45,7 +46,7 @@ for (const row of data) {
 
     // Append each review to file as one line:
     for (const review of englishReviews) {
-      fs.appendFileSync("reviews.jsonl", JSON.stringify(review) + "\n");
+      fs.appendFileSync(reviewsFilePath, JSON.stringify(review) + "\n");
     }
 
     // Mark this place as scraped
@@ -53,7 +54,7 @@ for (const row of data) {
 
     // Save review count in the excel
     XLSX.utils.sheet_add_json(worksheet, data, { origin: "A1", skipHeader: false });
-    XLSX.writeFile(workbook, xlsxFileName);
+    XLSX.writeFile(workbook, xlsxFilePath);
 
     await new Promise(resolve => setTimeout(resolve, 2000));  // polite delay
 
