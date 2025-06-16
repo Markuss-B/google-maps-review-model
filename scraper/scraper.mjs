@@ -32,8 +32,7 @@ for (const row of data) {
 
   // scrape the place
   try {
-    const result = await scraper(url, { clean: true, languageFilter: "en", maxReviewCount: maxReviewsPerPlace, languagePatience: 15 }); // 10 reviews per page
-    const reviews = JSON.parse(result);
+    const reviews = await scraper(url, {languageFilter: "en", maxReviewCount: maxReviewsPerPlace, languagePatience: 15 }); // 10 reviews per page
 
     const englishReviews = reviews
       .map(r => ({

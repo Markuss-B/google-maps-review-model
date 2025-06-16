@@ -9,10 +9,9 @@ import parser from "./parser.js";
  * @param {string} url - Must include "https://www.google.com/maps/place/".
  * @param {string} sort_type - Must be a valid key in SortEnum.
  * @param {string|number} pages - "max" or a number.
- * @param {boolean} clean - Must be a boolean.
  * @throws {Error} If any parameter is invalid.
  */
-export function validateParams(url, sort_type, pages, clean) {
+export function validateParams(url, sort_type, pages) {
     const parsedUrl = new URL(url);
     if (parsedUrl.host !== "www.google.com" || !parsedUrl.pathname.startsWith("/maps/place/")) {
         throw new Error(`Invalid URL: ${url}`);
@@ -22,9 +21,6 @@ export function validateParams(url, sort_type, pages, clean) {
     }
     if (pages !== "max" && isNaN(pages)) {
         throw new Error(`Invalid pages value: ${pages}`);
-    }
-    if (typeof clean !== "boolean") {
-        throw new Error(`Invalid value for 'clean': ${clean}`);
     }
 }
 
@@ -57,21 +53,16 @@ export async function fetchReviews(url, sort, nextPage = "", search_query = "") 
  * @param {string} sort - Sorting parameter for reviews.
  * @param {string|number} pages - Number of pages or "max".
  * @param {string} search_query - Search query to filter reviews.
- * @param {boolean} clean - Whether to clean and parse the data.
  * @param {Array} initialData - Initial data containing reviews and next page token.
  * @param {string} languageFilter - Filter for review language, default "any".
  * @param {string|number} maxReviewCount - Number of reviews ir "max".
  * @param {string|number} maxReviewCount -  Number of consecutive pages allowed to return zero matching reviews before stopping early.
  * @returns {Promise<Array>} Array of reviews or parsed reviews.
  */
-export async function paginateReviews(url, sort, pages, search_query, clean, initialData, languageFilter="any", maxReviewCount="max", languagePatience=null) {
+export async function paginateReviews(url, sort, pages, search_query, page, reviews, languageFilter="any", maxReviewCount="max", languagePatience=null) {
     let languageMissCount = 0;
-    
-    let reviews = initialData[2].filter(([review]) => {
-        const lang = review[2][14]?.[0];
-        return languageFilter === "any" || lang === languageFilter;
-    });
-    let nextPage = initialData[1]?.replace(/"/g, "");
+
+    let nextPage = page?.replace(/"/g, "");
     let currentPage = 2;
     while (nextPage && (pages === "max" || currentPage <= +pages) && (maxReviewCount === "max" || reviews.length < maxReviewCount)) {
         console.log(`${reviews.length} reviews scraped. Scraping page ${currentPage}...`);
@@ -82,11 +73,8 @@ export async function paginateReviews(url, sort, pages, search_query, clean, ini
             break;
         }
 
-        // language filter
-        const newFilteredReviews = data[2].filter(([review]) => {
-            const lang = review[2][14]?.[0];
-            return languageFilter === "any" || lang === languageFilter;
-        });
+        let newFilteredReviews = await parser(data[2]);
+        newFilteredReviews = filterReviews(newFilteredReviews, { languageFilter });
 
         if (languagePatience !== null) {
             if (newFilteredReviews.length === 0) {
@@ -100,11 +88,28 @@ export async function paginateReviews(url, sort, pages, search_query, clean, ini
             }
         }
 
+        newFilteredReviews = newFilteredReviews
+
         reviews = [...reviews, ...newFilteredReviews];
         nextPage = data[1]?.replace(/"/g, "");
         if (!nextPage) break;
         await new Promise(resolve => setTimeout(resolve, 1000)); // Avoid rate-limiting
         currentPage++;
     }
-    return clean ? await parser(reviews) : reviews;
+    
+    return reviews;
+}
+
+export function filterReviews(reviews, { languageFilter = "any", requireRating = true, requireText = true } = {}) {
+  return reviews.filter(review => {
+    const lang = review.review?.language;
+    const rating = review.review?.rating;
+    const text = review.review?.text?.trim();
+
+    if (languageFilter !== "any" && lang !== languageFilter) return false;
+    if (requireRating && (rating === null || rating === undefined)) return false;
+    if (requireText && (!text || text.length === 0)) return false;
+
+    return true;
+  });
 }
