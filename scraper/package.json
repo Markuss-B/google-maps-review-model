@@ -1,7 +1,6 @@
 {
   "dependencies": {
     "csv": "^6.3.11",
-    "google-maps-review-scraper": "github:Markuss-B/google-maps-review-scraper",
     "xlsx": "^0.18.5"
   }
 }

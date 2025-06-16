@@ -1,4 +1,4 @@
-import { scraper } from "google-maps-review-scraper"
+import { scraper } from "./lib/google-maps-review-scraper/index.js"
 import fs from "fs";
 import XLSX from 'xlsx';
 
