@@ -62,11 +62,26 @@ export async function fetchReviews(url, sort, nextPage = "", search_query = "") 
 export async function paginateReviews(url, sort, pages, search_query, page, reviews, languageFilter="any", maxReviewCount="max", languagePatience=null) {
     let languageMissCount = 0;
 
+    let errorPatience = 5;
+    let errors = 0
+
     let nextPage = page?.replace(/"/g, "");
     let currentPage = 2;
     while (nextPage && (pages === "max" || currentPage <= +pages) && (maxReviewCount === "max" || reviews.length < maxReviewCount)) {
         console.log(`${reviews.length} reviews scraped. Scraping page ${currentPage}...`);
-        const data = await fetchReviews(url, sort, nextPage, search_query);
+        let data;
+        try {
+            data = await fetchReviews(url, sort, nextPage, search_query);
+        } catch (error) {
+            console.error(`Failed to fetch page ${currentPage}:`, error);
+            errors++;
+            if (errors >= errorPatience) {
+                break;
+            } else {
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Avoid rate-limiting
+                continue;
+            }
+        }
 
         if (!data || !Array.isArray(data) || data.length < 3 || !Array.isArray(data[2])) {
             console.warn(`Unexpected or incomplete data on page ${currentPage}. Stopping pagination.`);
@@ -92,9 +107,12 @@ export async function paginateReviews(url, sort, pages, search_query, page, revi
 
         reviews = [...reviews, ...newFilteredReviews];
         nextPage = data[1]?.replace(/"/g, "");
+
         if (!nextPage) break;
         await new Promise(resolve => setTimeout(resolve, 1000)); // Avoid rate-limiting
         currentPage++;
+
+        errors = 0;
     }
     
     return reviews;
