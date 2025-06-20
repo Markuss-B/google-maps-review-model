@@ -9,6 +9,9 @@ export default async function parseReviews(reviews) {
 		const hasResponse = !!review[3][14]?.[0]?.[0]
 		return {
 			review_id: review[0],
+			author: {
+				id: review[1][4][5][3],
+			},
 			review: {
 				rating: review[2][0]?.[0] || null,
 				text: review[2][15]?.[0]?.[0] || null,

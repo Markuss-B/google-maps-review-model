@@ -36,3 +36,31 @@ export async function scraper(url, { sort_type = "relevent", search_query = "", 
         return;
     }
 }
+
+/**
+ * Scrapes reviews from a given Google Maps URL.
+ *
+ * @param {string} url - The URL of the Google Maps location to scrape reviews from.
+ * @param {Object} options - The options for scraping.
+ * @param {string} [options.sort_type="relevant"] - The type of sorting for the reviews ("relevant", "newest", "highest_rating", "lowest_rating").
+ * @param {string} [options.search_query=""] - The search query to filter reviews.
+ * @returns {Promise<Array|number>} - Returns an array of reviews or 0 if no reviews are found.
+ * @throws {Error} - Throws an error if the URL is not provided or if fetching reviews fails.
+ */
+export async function scrapePage(url, { sort_type = "relevant", search_query = "", page=""} = {}) {
+    try {
+        const sort = SortEnum[sort_type];
+        const data = await fetchReviews(url, sort, page, search_query);
+
+        if (!data || !data[2] || !data[2].length) return { reviews: [], nextPage: null };
+
+        let reviews = await parseReviews(data[2]);
+
+        let nextPage = data[1]?.replace(/"/g, "");
+
+        return {reviews, nextPage}
+    } catch (e) {
+        console.error(e);
+        return {reviews: [], nextPage: null}
+    }
+}
